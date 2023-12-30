@@ -1,20 +1,29 @@
 from pynput.keyboard import Key, Listener
 import os
-import sys
-import time
+from threading import Timer
 
-louder_buzzer = "jeopardy-incorrect-answer.mp3"
-softer_buzzer = "the-family-feud-buzzer-sound-effect.mp3"
-locked_buzzer_message = "Buzzer is locked, press space to unlock"
+LOUDER_INCORRECT_ANSWER = "jeopardy-incorrect-answer.mp3"
+SOFTER_INCORRECT_ANSWER = "the-family-feud-buzzer-sound-effect.mp3"
+CORRECT_ANSWER = "rightanswer.mp3"
+LOCKED_BUZZER_MESSAGE = "Buzzer is locked, press space to unlock"
+SOUNDS_FOLDER = "/Users/dansun/Downloads/"
+DEFAULT_BUZZER_TIMEOUT = 5
+BUZZER_BUTTONS = [Key.shift, Key.shift_r, Key.tab, Key.backspace]
 
 class Buzzer:
-    def __init__(self, team1, team2):
-        print("Team {} presses the left shift button to buzz in. Team {} presses the right shift button to buzz in".format(team1, team2))
-        self.team1 = team1
-        self.team2 = team2
-        self.buzzer_locked = False
-        self.listener = None
+    def __init__(self, teams, buzzer_timeout=DEFAULT_BUZZER_TIMEOUT):
+        self.teams = teams if teams else ["1", "2"]
+        if not teams:
+            print("No team names specified, defaulting to Team 1 and Team 2")
+        else:
+            print("Teams are {}".format(self.teams))
 
+        self.team_buzzer_keys = BUZZER_BUTTONS[:len(self.teams)]
+        self.buzzer_locked = False
+        self.buzzer_timeout = buzzer_timeout
+        self.listener = None
+        
+    def start(self):
         # Collect events until listener is released
         with Listener(
                 on_press=self.on_press,
@@ -23,46 +32,35 @@ class Buzzer:
             listener.join()
 
     def on_press(self, key):
-        if key == Key.shift:
-            if not self.buzzer_locked:
-                print("Team {} pressed".format(self.team1))
-                self.buzzer_locked = True
-                os.system('say "Team ' + self.team1 + '"')
-            else:
-                print(locked_buzzer_message)
-        elif key == Key.shift_r:
-            if not self.buzzer_locked:
-                print("Team {} pressed".format(self.team2))
-                self.buzzer_locked = True
-                os.system('say "Team ' + self.team2 + '"')
-            else:
-                print(locked_buzzer_message)
+        print("Key:", str(key))
+        for i in range(len(self.teams)):
+            if key == self.team_buzzer_keys[i]:
+                self.team_buzz(self.teams[i])
 
-
-        elif key == Key.space:
+        if key == Key.space:
             self.buzzer_locked = False
             print("Reset buzzer")
         elif key == Key.up:
             print("CORRECT")
-            os.system('afplay "/Users/dansun/Downloads/rightanswer.mp3"')
+            os.system('afplay "{}{}"'.format(SOUNDS_FOLDER, CORRECT_ANSWER))
         elif key == Key.down:
             print("INCORRECT")
-            # os.system('afplay "/Users/dansun/Downloads/{}"'.format(softer_buzzer))
-            os.system('afplay "/Users/dansun/Downloads/{}"'.format(louder_buzzer))
+            os.system('afplay "{}{}"'.format(SOUNDS_FOLDER, LOUDER_INCORRECT_ANSWER))
             
-
     def on_release(self, key):
         if key == Key.esc and self.listener:
             self.listener.stop()
 
+    def team_buzz(self, team):
+        if not self.buzzer_locked:
+            print("Team {} pressed".format(team))
+            self.buzzer_locked = True
+            os.system('say "Team ' + team + '"')
+            t = Timer(self.buzzer_timeout, self.release_buzzer)
+            t.start()
+        else:
+            print(LOCKED_BUZZER_MESSAGE)
 
-team1 = "1"
-team2 = "2"
-if len(sys.argv) == 3:
-    team1 = sys.argv[1]
-    team2 = sys.argv[2]
-    print("Teams are {} and {}".format(team1, team2))
-else:
-    print("No team names specified, defaulting to Team 1 and Team 2")
-
-a = Buzzer(team1, team2)
+    def release_buzzer(self):
+        print("Buzzer released")
+        self.buzzer_locked = False

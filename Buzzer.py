@@ -4,6 +4,7 @@ from threading import Timer
 
 LOUDER_INCORRECT_ANSWER = "jeopardy-incorrect-answer.mp3"
 SOFTER_INCORRECT_ANSWER = "the-family-feud-buzzer-sound-effect.mp3"
+TIMES_UP = "times-up.mp3"
 CORRECT_ANSWER = "rightanswer.mp3"
 LOCKED_BUZZER_MESSAGE = "Buzzer is locked, press space to unlock"
 SOUNDS_FOLDER = "/Users/dansun/Downloads/"
@@ -19,6 +20,7 @@ class Buzzer:
             print("Teams are {}".format(self.teams))
 
         self.team_buzzer_keys = BUZZER_BUTTONS[:len(self.teams)]
+        print("The buzzers are", self.team_buzzer_keys)
         self.buzzer_locked = False
         self.buzzer_timeout = buzzer_timeout
         self.listener = None
@@ -56,11 +58,15 @@ class Buzzer:
             print("Team {} pressed".format(team))
             self.buzzer_locked = True
             os.system('say "Team ' + team + '"')
-            t = Timer(self.buzzer_timeout, self.release_buzzer)
+            t = Timer(self.buzzer_timeout, self.timeout)
             t.start()
         else:
             print(LOCKED_BUZZER_MESSAGE)
 
+    def timeout(self):
+        os.system('afplay "{}{}"'.format(SOUNDS_FOLDER, TIMES_UP))
+        self.release_buzzer()
+
     def release_buzzer(self):
-        print("Buzzer released")
+        print("BUZZER RELEASED. END QUESTION")
         self.buzzer_locked = False
